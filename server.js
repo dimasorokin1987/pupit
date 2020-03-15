@@ -49,8 +49,8 @@ app.get('/screenshot', async (req, res) => {try{
 
 app.get('/click', async (req, res) => {try{
     if(isOpened){
-        let x=req.query.x;
-        let y=req.query.y;
+        let x=Number(req.query.x);
+        let y=Number(req.query.y);
         await page.mouse.click(x, y, {delay: 500});
         res.writeHead(200,{'Content-Type':'text/plain'});
         res.end('clicked');
