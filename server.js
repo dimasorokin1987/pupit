@@ -13,7 +13,7 @@ const port = process.env.PORT || 4000;
 
 //http://127.0.0.1:4000/open/?url=http://127.0.0.1:5000
 app.get('/open', async (req, res) => {try{
-    browser = await puppeteer.launch();
+    browser = await puppeteer.launch({args: ['--no-sandbox', '--disable-setuid-sandbox']});
     page = await browser.newPage();
     await page.goto(req.query.url);
     isOpened = true;
