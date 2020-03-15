@@ -38,10 +38,15 @@ app.get('/checkToken', async (req, res) => {try{
 //http://127.0.0.1:4000/open/?w=640&h=480
 app.get('/open', async (req, res) => {try{
     if(!isOpened){
-        browser = await puppeteer.launch({
-          //  args: ['--no-sandbox', '--disable-setuid-sandbox'],
-          //  executablePath: '/usr/bin/google-chrome'
-        });
+        if(process.env.NODE_ENV === 'production'){
+            browser = await puppeteer.launch({
+                  args: ['--no-sandbox', '--disable-setuid-sandbox'],
+                  executablePath: '/usr/bin/google-chrome'
+              });
+        }else{
+            browser = await puppeteer.launch();
+        }
+
         page = await browser.newPage();
         const width = Number(req.query.w) || 640;
         const height = Number(req.query.h) || 480;
