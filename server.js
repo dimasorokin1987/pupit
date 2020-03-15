@@ -11,17 +11,30 @@ const app = express();
 const port = process.env.PORT || 4000;
 
 
-//http://127.0.0.1:4000/open/?url=http://127.0.0.1:5000
+//http://127.0.0.1:4000/open/?w=640&h=480
 app.get('/open', async (req, res) => {try{
-    browser = await puppeteer.launch({args: ['--no-sandbox', '--disable-setuid-sandbox']});
+    browser = await puppeteer.launch({
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+        executablePath: '/usr/bin/google-chrome'
+    });
     page = await browser.newPage();
-    await page.goto(req.query.url);
+    const width = req.query.w || 640;
+    const height = req.query.h || 480;
+    await page.setViewport({width,height});
     isOpened = true;
     res.writeHead(200,{'Content-Type':'text/plain'});
     res.end('opened');
 }catch(e){res.end(e.toString())}});
 
-app.get('/screenshot', async (req, res) => {
+//http://127.0.0.1:4000/goto/?url=http://127.0.0.1:5000
+app.get('/goto', async (req, res) => {try{
+    await page.goto(req.query.url);
+    isOpened = true;
+    res.writeHead(200,{'Content-Type':'text/plain'});
+    res.end('navigated');
+}catch(e){res.end(e.toString())}});
+
+app.get('/screenshot', async (req, res) => {try{
     if(isOpened){
         const screenshotBuffer = await page.screenshot();
         res.writeHead(200, {
@@ -32,9 +45,9 @@ app.get('/screenshot', async (req, res) => {
     }else{
         res.end();
     }
-});
+}catch(e){res.end(e.toString())}});
 
-app.get('/setBackgroundColor', async (req, res) => {
+app.get('/setBackgroundColor', async (req, res) => {try{
     if(isOpened){
         //res.end(req.query.color);
         const color = req.query.color||'#000';
@@ -48,10 +61,10 @@ app.get('/setBackgroundColor', async (req, res) => {
     }else{
         res.end();
     }
-});
+}catch(e){res.end(e.toString())}});
 
 
-app.get('/close', async (req, res) => {
+app.get('/close', async (req, res) => {try{
     if(isOpened){
         await browser.close();
         isOpened = false;
@@ -60,7 +73,7 @@ app.get('/close', async (req, res) => {
     }else{
         res.end();
     }
-});
+}catch(e){res.end(e.toString())}});
 
 console.log('server started at http://127.0.0.1:'+port)
 app.listen(port);
