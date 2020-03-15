@@ -69,7 +69,7 @@ app.get('/enterText', async (req, res) => {try{
     }
 }catch(e){res.end(e.toString())}});
 
-app.get('/keyPress', async (req, res) => {try{
+app.get('/pressKey', async (req, res) => {try{
     if(isOpened){
         await page.keyboard.press(req.query.key, {delay: 200});
         res.writeHead(200,{'Content-Type':'text/plain'});
