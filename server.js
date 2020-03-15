@@ -18,8 +18,8 @@ app.get('/open', async (req, res) => {try{
         executablePath: '/usr/bin/google-chrome'
     });
     page = await browser.newPage();
-    const width = req.query.w || 640;
-    const height = req.query.h || 480;
+    const width = Number(req.query.w) || 640;
+    const height = Number(req.query.h) || 480;
     await page.setViewport({width,height});
     isOpened = true;
     res.writeHead(200,{'Content-Type':'text/plain'});
