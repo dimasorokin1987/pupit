@@ -73,7 +73,7 @@ app.get('/pressKey', async (req, res) => {try{
     if(isOpened){
         await page.keyboard.press(req.query.key, {delay: 200});
         res.writeHead(200,{'Content-Type':'text/plain'});
-        res.end('text entered');
+        res.end('key pressed');
     }else{
         res.end();
     }
