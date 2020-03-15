@@ -8,17 +8,18 @@ let isOpened = false;
 const wait = tm=>new Promise(res=>setTimeout(res,tm));
 
 const app = express();
+const port = process.env.PORT || 4000;
 
 
 //http://127.0.0.1:4000/open/?url=http://127.0.0.1:5000
-app.get('/open', async (req, res) => {
+app.get('/open', async (req, res) => {try{
     browser = await puppeteer.launch();
     page = await browser.newPage();
     await page.goto(req.query.url);
     isOpened = true;
     res.writeHead(200,{'Content-Type':'text/plain'});
     res.end('opened');
-});
+}catch(e){res.end(e.toString())}});
 
 app.get('/screenshot', async (req, res) => {
     if(isOpened){
@@ -61,5 +62,5 @@ app.get('/close', async (req, res) => {
     }
 });
 
-console.log('server started at http://127.0.0.1:4000/screenshot')
-app.listen(4000);
+console.log('server started at http://127.0.0.1:'+port)
+app.listen(port);

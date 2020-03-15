@@ -1,0 +1,15 @@
+[Unit]
+Description="pupit"
+
+[Service]
+ExecStart=/usr/bin/node server.js
+WorkingDirectory=/home/ec2-user/pupit
+Restart=always
+RestartSec=10
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=pupit
+Environment=NODE_ENV=production PORT=4000
+
+[Install]
+WantedBy=multi-user.target
