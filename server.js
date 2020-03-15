@@ -4,6 +4,7 @@ const express = require('express');
 let browser = undefined;
 let page = undefined;
 let token = undefined;
+let isInitiated = false;
 let isOpened = false;
 let isNavigated = false;
 const pass = 'pass';
@@ -17,7 +18,7 @@ const port = process.env.PORT || 4000;
 
 
 app.get('/getToken', async (req, res) => {try{
-    if(isOpened){
+    if(isInitiated){
         res.writeHead(200,{'Content-Type':'text/plain'});
         res.end('token:'+token);
     }else{
@@ -27,9 +28,22 @@ app.get('/getToken', async (req, res) => {try{
 
 app.get('/checkToken', async (req, res) => {try{
     const hasAuth = String(req.query.token) === String(token);
-    if(isOpened){
+    if(isInitiated){
         res.writeHead(200,{'Content-Type':'text/plain'});
         res.end('status:'+hasAuth);
+    }else{
+        res.end();
+    }
+}catch(e){res.end(e.toString())}});
+
+app.get('/init', async (req, res) => {try{
+    const hasAuth = String(req.query.token) === String(token);
+    if(!isInitiated){
+        isInitiated = true;
+        let randStr = Math.random().toString().slice(2);
+        token = hashCode(pass+randStr);
+        res.writeHead(200,{'Content-Type':'text/plain'});
+        res.end(randStr);
     }else{
         res.end();
     }
@@ -52,10 +66,8 @@ app.get('/open', async (req, res) => {try{
         const height = Number(req.query.h) || 480;
         await page.setViewport({width,height});
         isOpened = true;
-        let randStr = Math.random().toString().slice(2);
-        token = hashCode(pass+randStr);
         res.writeHead(200,{'Content-Type':'text/plain'});
-        res.end('opened,rnd='+randStr);
+        res.end('opened');
     }else{
         res.end();
     }
@@ -145,6 +157,7 @@ app.get('/close', async (req, res) => {try{
     const hasAuth = String(req.query.token) === String(token);
     if(hasAuth && isOpened){
         await browser.close();
+        isInitiated = false;
         isOpened = false;
         isNavigated = false;
         res.writeHead(200,{'Content-Type': 'text/plain'});
