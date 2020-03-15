@@ -47,6 +47,38 @@ app.get('/screenshot', async (req, res) => {try{
     }
 }catch(e){res.end(e.toString())}});
 
+app.get('/click', async (req, res) => {try{
+    if(isOpened){
+        let x=req.query.x;
+        let y=req.query.y;
+        await page.mouse.click(x, y, {delay: 500});
+        res.writeHead(200,{'Content-Type':'text/plain'});
+        res.end('clicked');
+    }else{
+        res.end();
+    }
+}catch(e){res.end(e.toString())}});
+
+app.get('/enterText', async (req, res) => {try{
+    if(isOpened){
+        await page.keyboard.type(req.query.txt, {delay: 100});
+        res.writeHead(200,{'Content-Type':'text/plain'});
+        res.end('text entered');
+    }else{
+        res.end();
+    }
+}catch(e){res.end(e.toString())}});
+
+app.get('/keyPress', async (req, res) => {try{
+    if(isOpened){
+        await page.keyboard.press(req.query.key, {delay: 200});
+        res.writeHead(200,{'Content-Type':'text/plain'});
+        res.end('text entered');
+    }else{
+        res.end();
+    }
+}catch(e){res.end(e.toString())}});
+
 app.get('/setBackgroundColor', async (req, res) => {try{
     if(isOpened){
         //res.end(req.query.color);
