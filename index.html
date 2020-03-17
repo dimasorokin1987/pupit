@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang='en'>
+
+<head>
+  <meta charset='utf-8' />
+  <meta name='viewport' content='width=device-width, initial-scale=1.0' />
+</head>
+
+<body>
+  <h1>pupit client</h1>
+  <p>
+    <button id='init'>init</button>
+  </p><p>
+    <select id='resolution'>
+      <option value='w=1920&h=1080&'>1920x1080</option>
+      <option value='w=640&h=480&'>640x480</option>
+    </select>
+    <button id='open'>open</button>
+  </p><p>
+      <input type='text' id='url' value='https://pptr.dev' />
+      <button id='goto'>navigate</button>
+  </p><p>
+    <input type='text' id='rect' value='' />
+    <button id='screenshot'>screenshot</button>
+  </p><p>
+    <button id='close'>close</button>
+  </p>
+  <img />
+  <script>
+    const imgScreenshot = document.querySelector('img');
+    const initButton = document.querySelector('#init');
+    const resolutionSelect = document.querySelector('#resolution');
+    const openButton = document.querySelector('#open');
+    const urlInput = document.querySelector('#url');
+    const gotoButton = document.querySelector('#goto');
+    const rectInput = document.querySelector('#rect');
+    const screenshotButton = document.querySelector('#screenshot');
+    const closeButton = document.querySelector('#close');
+
+    const pass ='pass';
+    const wait = tm=>new Promise(res=>setTimeout(res,tm));
+    const hashCode = s => s.split('').reduce((a, b) => (((a << 5) - a) + b.charCodeAt(0)) | 0, 0);
+    const arrayBufferToBase64 = (
+      buf, typedArray, array, str
+    )=>{
+      typedArray = new Uint8Array(buf);
+      array = [...typedArray];
+      str = array.map(b=>String.fromCharCode(b)).join('');
+      return btoa(str);
+    };
+
+    /*
+      (async(r, txt, randStr, token) => {
+        r = await fetch('init');
+        txt = await r.text();
+        console.log(txt);
+        randStr = txt;
+        window.token = hashCode(pass+randStr);
+        await wait(1000);
+
+        r = await fetch('open?w=1920&h=1080&token='+token);
+        txt = await r.text();
+        console.log(txt);
+        await wait(1000);
+
+        r = await fetch('goto?url=https://pptr.dev&token='+token);
+        txt = await r.text();
+        console.log(txt);
+        await wait(2000);
+
+        r = await fetch('screenshot?token='+token);
+        txt = await r.text();
+        console.log(txt);
+        await wait(1000);
+
+        r = await fetch('close?token='+token);
+        txt = await r.text();
+        console.log(txt);
+        await wait(1000);
+        
+
+      })();
+*/
+      initButton.onclick = async(e,r,txt,randStr)=>{
+        r = await fetch('init');
+        txt = await r.text();
+        console.log(txt);
+        randStr = txt;
+        window.token = hashCode(pass+randStr);
+      };
+
+      openButton.onclick = async(e,r,txt)=>{
+        let resolution = resolutionSelect.value;
+        r = await fetch('open?'+resolution+'&token='+token);
+        txt = await r.text();
+        console.log(txt);
+        await wait(5000);
+      };
+
+      gotoButton.onclick = async(e,r,txt)=>{
+        let url = urlInput.value;
+        r = await fetch('goto?url='+url+'&token='+token);
+        txt = await r.text();
+        console.log(txt);
+      };
+
+      screenshotButton.onclick = async(
+        e,rect,r,buf,imgStr
+      )=>{
+        rect = rectInput.value;
+        r = await fetch('screenshot?rect='+rect+'&token='+token);
+        buf = await r.arrayBuffer();
+        imgStr = 'data:image/jpeg;base64,';
+        imgStr += arrayBufferToBase64(buf);
+        imgScreenshot.src = imgStr;
+      };
+
+      closeButton.onclick = async(e,r,txt)=>{
+        let url = urlInput.value;
+        r = await fetch('close?token='+token);
+        txt = await r.text();
+        console.log(txt);
+      };
+  </script>
+</body>
+
+</html>
