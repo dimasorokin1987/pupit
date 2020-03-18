@@ -124,7 +124,7 @@ app.get('/screenshot', async (req, res) => {
           x: arrRect[0],
           y: arrRect[1],
           width: arrRect[2],
-          height: arrRect[2]
+          height: arrRect[3]
         };
         console.log(objRect);
         screenshotBuffer = await page.screenshot({
@@ -153,7 +153,7 @@ app.get('/click', async (req, res) => {
       let y = Number(req.query.y);
       await page.mouse.click(x, y, { delay: 500 });
       res.writeHead(200, { 'Content-Type': 'text/plain' });
-      res.end('clicked');
+      res.end('clicked:'+x+'x'+y);
     } else {
       res.end();
     }
@@ -166,7 +166,7 @@ app.get('/enterText', async (req, res) => {
     if (hasAuth && isNavigated) {
       await page.keyboard.type(req.query.txt, { delay: 100 });
       res.writeHead(200, { 'Content-Type': 'text/plain' });
-      res.end('text entered');
+      res.end('text entered:'+req.query.txt);
     } else {
       res.end();
     }
@@ -179,7 +179,7 @@ app.get('/pressKey', async (req, res) => {
     if (hasAuth && isNavigated) {
       await page.keyboard.press(req.query.key, { delay: 200 });
       res.writeHead(200, { 'Content-Type': 'text/plain' });
-      res.end('key pressed');
+      res.end('key pressed:'+req.query.key);
     } else {
       res.end();
     }

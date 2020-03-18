@@ -17,11 +17,30 @@
     </select>
     <button id='open'>open</button>
   </p><p>
-      <input type='text' id='url' value='https://pptr.dev' />
+      <input type='text' id='url' placeholder='url' value='https://pptr.dev' />
       <button id='goto'>navigate</button>
   </p><p>
-    <input type='text' id='rect' value='' />
+    <input type='text' id='rect' placeholder='x,y,w,h' value='' />
     <button id='screenshot'>screenshot</button>
+  </p><p>
+    <input type='text' id='txt' placeholder='text' value='' />
+    <button id='enterText'>enter</button>
+  </p><p>
+    <select id='key' placeholder='key'>
+      <option value='Enter'>Enter</option>
+      <option value='Tab'>Tab</option>
+      <option value='Space'>Space</option>
+      <option value='Escape'>Escape</option>
+      <option value='Backspace'>Backspace</option>
+      <option value='CapsLock'>CapsLock</option>
+      <option value='ArrowUp'>Up</option>
+      <option value='ArrowDown'>Down</option>
+      <option value='ArrowLeft'>Left</option>
+      <option value='ArrowRight'>Right</option>
+      <option value='VolumeUp'>VolumeUp</option>
+      <option value='VolumeDown'>VolumeDown</option>
+    </select>
+    <button id='pressKey'>press</button>
   </p><p>
     <button id='close'>close</button>
   </p>
@@ -35,6 +54,10 @@
     const gotoButton = document.querySelector('#goto');
     const rectInput = document.querySelector('#rect');
     const screenshotButton = document.querySelector('#screenshot');
+    const txtInput = document.querySelector('#txt');
+    const enterTextButton = document.querySelector('#enterText');
+    const keySelect = document.querySelector('#key');
+    const pressKeyButton = document.querySelector('#pressKey');
     const closeButton = document.querySelector('#close');
 
     const pass ='pass';
@@ -48,38 +71,31 @@
       str = array.map(b=>String.fromCharCode(b)).join('');
       return btoa(str);
     };
-
-    /*
-      (async(r, txt, randStr, token) => {
-        r = await fetch('init');
-        txt = await r.text();
-        console.log(txt);
-        randStr = txt;
-        window.token = hashCode(pass+randStr);
-        await wait(1000);
-
-        r = await fetch('open?w=1920&h=1080&token='+token);
-        txt = await r.text();
-        console.log(txt);
-        await wait(1000);
-
-        r = await fetch('goto?url=https://pptr.dev&token='+token);
-        txt = await r.text();
-        console.log(txt);
-        await wait(2000);
-
-        r = await fetch('screenshot?token='+token);
-        txt = await r.text();
-        console.log(txt);
-        await wait(1000);
-
-        r = await fetch('close?token='+token);
-        txt = await r.text();
-        console.log(txt);
-        await wait(1000);
-        
-
-      })();
+/*
+    function getPosition(el) {
+      var xPosition = 0;
+      var yPosition = 0;
+    
+      while (el) {
+        if (el.tagName == "BODY") {
+          // deal with browser quirks with body/window/document and page scroll
+          var xScrollPos = el.scrollLeft || document.documentElement.scrollLeft;
+          var yScrollPos = el.scrollTop || document.documentElement.scrollTop;
+    
+          xPosition += (el.offsetLeft - xScrollPos + el.clientLeft);
+          yPosition += (el.offsetTop - yScrollPos + el.clientTop);
+        } else {
+          xPosition += (el.offsetLeft - el.scrollLeft + el.clientLeft);
+          yPosition += (el.offsetTop - el.scrollTop + el.clientTop);
+        }
+    
+        el = el.offsetParent;
+      }
+      return {
+        x: xPosition,
+        y: yPosition
+      };
+    }
 */
       initButton.onclick = async(e,r,txt,randStr)=>{
         r = await fetch('init');
@@ -89,16 +105,15 @@
         window.token = hashCode(pass+randStr);
       };
 
-      openButton.onclick = async(e,r,txt)=>{
-        let resolution = resolutionSelect.value;
+      openButton.onclick = async(e,resolution,r,txt)=>{
+        resolution = resolutionSelect.value;
         r = await fetch('open?'+resolution+'&token='+token);
         txt = await r.text();
         console.log(txt);
-        await wait(5000);
       };
 
-      gotoButton.onclick = async(e,r,txt)=>{
-        let url = urlInput.value;
+      gotoButton.onclick = async(e,url,r,txt)=>{
+        url = urlInput.value;
         r = await fetch('goto?url='+url+'&token='+token);
         txt = await r.text();
         console.log(txt);
@@ -113,6 +128,30 @@
         imgStr = 'data:image/jpeg;base64,';
         imgStr += arrayBufferToBase64(buf);
         imgScreenshot.src = imgStr;
+      };
+
+      imgScreenshot.onclick = async(e,rect,x,y,r,txt)=>{
+        rect = e.target.getBoundingClientRect();
+        x = Math.floor(e.clientX - rect.left); //x position within the element.
+        y = Math.floor(e.clientY - rect.top); 
+        console.log(x,y);
+        r = await fetch('click?x='+x+'&y='+y+'&token='+token);
+        txt = await r.text();
+        console.log(txt);
+      };
+
+      enterTextButton.onclick = async(e,text,r,txt)=>{
+        text = encodeURIComponent(txtInput.value);
+        r = await fetch('enterText?txt='+text+'&token='+token);
+        txt = await r.text();
+        console.log(txt);
+      };
+
+      pressKeyButton.onclick = async(e,key,r,txt)=>{
+        key = keySelect.value;
+        r = await fetch('pressKey?key='+key+'&token='+token);
+        txt = await r.text();
+        console.log(txt);
       };
 
       closeButton.onclick = async(e,r,txt)=>{
