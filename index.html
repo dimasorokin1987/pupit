@@ -100,7 +100,7 @@
       initButton.onclick = async(e,r,txt,randStr)=>{
         r = await fetch('init');
         txt = await r.text();
-        console.log(txt);
+        alert(txt);
         randStr = txt;
         window.token = hashCode(pass+randStr);
       };
@@ -109,14 +109,14 @@
         resolution = resolutionSelect.value;
         r = await fetch('open?'+resolution+'&token='+token);
         txt = await r.text();
-        console.log(txt);
+        alert(txt);
       };
 
       gotoButton.onclick = async(e,url,r,txt)=>{
         url = urlInput.value;
         r = await fetch('goto?url='+url+'&token='+token);
         txt = await r.text();
-        console.log(txt);
+        alert(txt);
       };
 
       screenshotButton.onclick = async(
@@ -134,10 +134,9 @@
         rect = e.target.getBoundingClientRect();
         x = Math.floor(e.clientX - rect.left); //x position within the element.
         y = Math.floor(e.clientY - rect.top); 
-        console.log(x,y);
         r = await fetch('click?x='+x+'&y='+y+'&token='+token);
         txt = await r.text();
-        console.log(txt);
+        alert(txt);
       };
 
       enterTextButton.onclick = async(e,text,r,txt)=>{
@@ -151,14 +150,14 @@
         key = keySelect.value;
         r = await fetch('pressKey?key='+key+'&token='+token);
         txt = await r.text();
-        console.log(txt);
+        alert(txt);
       };
 
       closeButton.onclick = async(e,r,txt)=>{
         let url = urlInput.value;
         r = await fetch('close?token='+token);
         txt = await r.text();
-        console.log(txt);
+        alert(txt);
       };
   </script>
 </body>
