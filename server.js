@@ -56,7 +56,7 @@ app.get('/checkToken', async (req, res) => {
 
 app.get('/init', async (req, res) => {
   try {
-    const hasAuth = String(req.query.token) === String(token);
+    //const hasAuth = String(req.query.token) === String(token);
     if (!isInitiated) {
       isInitiated = true;
       let randStr = Math.random().toString().slice(2);
@@ -72,7 +72,8 @@ app.get('/init', async (req, res) => {
 //http://127.0.0.1:4000/open/?w=640&h=480
 app.get('/open', async (req, res) => {
   try {
-    if (isInitiated && !isOpened) {
+    const hasAuth = String(req.query.token) === String(token);
+    if (hasAuth && isInitiated && !isOpened) {
       if (process.env.NODE_ENV === 'production') {
         browser = await puppeteer.launch({
           args: ['--no-sandbox', '--disable-setuid-sandbox'],
@@ -164,7 +165,8 @@ app.get('/enterText', async (req, res) => {
   try {
     const hasAuth = String(req.query.token) === String(token);
     if (hasAuth && isNavigated) {
-      await page.keyboard.type(req.query.txt, { delay: 100 });
+      const txt = decodeURIComponent(req.query.txt);
+      await page.keyboard.type(txt, { delay: 100 });
       res.writeHead(200, { 'Content-Type': 'text/plain' });
       res.end('text entered:'+req.query.txt);
     } else {
@@ -180,6 +182,31 @@ app.get('/pressKey', async (req, res) => {
       await page.keyboard.press(req.query.key, { delay: 200 });
       res.writeHead(200, { 'Content-Type': 'text/plain' });
       res.end('key pressed:'+req.query.key);
+    } else {
+      res.end();
+    }
+  } catch (e) { res.end(e.toString()) }
+});
+
+app.get('/exec', async (req, res) => {
+  try {
+    const hasAuth = String(req.query.token) === String(token);
+    if (hasAuth && isNavigated) {
+      const js = decodeURIComponent(req.query.js);
+      let result = '';
+      if(js){
+        result = await page.evaluate(js => {
+          let res;
+          try{
+            res=eval(js);
+          }catch(e){
+            res='error:'+e.toString();
+          }
+          return res;
+        }, js);
+      }
+      res.writeHead(200, { 'Content-Type': 'text/plain' });
+      res.end('processed:'+result);
     } else {
       res.end();
     }

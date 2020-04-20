@@ -42,6 +42,9 @@
     </select>
     <button id='pressKey'>press</button>
   </p><p>
+    <textarea id='taExec' placeholder='alert()'></textarea>
+    <button id='exec'>exec</button>
+  </p><p>
     <button id='close'>close</button>
   </p>
   <img />
@@ -58,6 +61,8 @@
     const enterTextButton = document.querySelector('#enterText');
     const keySelect = document.querySelector('#key');
     const pressKeyButton = document.querySelector('#pressKey');
+    const taExec = document.querySelector('#taExec');
+    const execButton = document.querySelector('#exec');
     const closeButton = document.querySelector('#close');
 
     const pass ='pass';
@@ -149,6 +154,13 @@
       pressKeyButton.onclick = async(e,key,r,txt)=>{
         key = keySelect.value;
         r = await fetch('pressKey?key='+key+'&token='+token);
+        txt = await r.text();
+        alert(txt);
+      };
+
+      execButton.onclick = async(e,js,r,txt)=>{
+        js = encodeURIComponent(taExec.value);
+        r = await fetch('exec?js='+js+'&token='+token);
         txt = await r.text();
         alert(txt);
       };
