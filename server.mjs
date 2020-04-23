@@ -1,10 +1,22 @@
-const puppeteer = require('puppeteer');
-const express = require('express');
-const fs = require('fs');
+//npm install puppeteer-page-proxy user-agents --save
+//node --experimental-modules server.mjs
+import express from 'express';
+import puppeteer from 'puppeteer';
+import useProxy from 'puppeteer-page-proxy';
+import fs from 'fs';
+import UserAgent from 'user-agents'; 
 
 let browser = undefined;
+let tabIndex = 0;
 let page = undefined;
 let token = undefined;
+let strUserAgent = undefined;
+let strProxy = undefined;
+let objViewport = {
+  width: 1024,
+  height: 768
+};
+
 let isInitiated = false;
 let isOpened = false;
 let isNavigated = false;
@@ -12,7 +24,12 @@ const pass = 'pass';
 
 const wait = tm => new Promise(res => setTimeout(res, tm));
 const hashCode = s => s.split('').reduce((a, b) => (((a << 5) - a) + b.charCodeAt(0)) | 0, 0)
-
+const dt = () => {
+  let iDate = Date.now();
+  let date = new Date(iDate);
+  let strDate = date.toISOString();
+  return strDate;
+};
 const readFile = filename => new Promise((resolve, reject) => {
   fs.readFile(filename, "utf8", (err, data) => {
     if (err) reject(err);
@@ -22,6 +39,11 @@ const readFile = filename => new Promise((resolve, reject) => {
 
 const app = express();
 const port = process.env.PORT || 4000;
+
+app.use((req, res, next)=>{
+  console.log(`${dt()}: query: ${req.originalUrl}`);
+  next();
+});
 
 app.get('/', async (req, res) => {
   try {
@@ -54,6 +76,18 @@ app.get('/checkToken', async (req, res) => {
   } catch (e) { res.end(e.toString()) }
 });
 
+app.get('/getTabsCount', async (req, res) => {
+  try {
+    if (isOpened) {
+      let pages = await browser.pages();
+      res.writeHead(200, { 'Content-Type': 'text/plain' });
+      res.end('tabs count:' + pages.length);
+    } else {
+      res.end();
+    }
+  } catch (e) { res.end(e.toString()) }
+});
+
 app.get('/init', async (req, res) => {
   try {
     //const hasAuth = String(req.query.token) === String(token);
@@ -63,6 +97,52 @@ app.get('/init', async (req, res) => {
       token = hashCode(pass + randStr);
       res.writeHead(200, { 'Content-Type': 'text/plain' });
       res.end(randStr);
+    } else {
+      res.end();
+    }
+  } catch (e) { res.end(e.toString()) }
+});
+
+
+app.get('/genUserAgent', async (req, res) => {
+  try {
+    const hasAuth = String(req.query.token) === String(token);
+    if (hasAuth && isInitiated && !isOpened) {
+      const userAgent = new UserAgent();
+      strUserAgent = userAgent.toString();
+      res.writeHead(200, { 'Content-Type': 'text/plain' });
+      res.end(strUserAgent);
+    } else {
+      res.end();
+    }
+  } catch (e) { res.end(e.toString()) }
+});
+
+app.get('/setViewportSize', async (req, res) => {
+  try {
+    const hasAuth = String(req.query.token) === String(token);
+    if (hasAuth && isInitiated && !isOpened) {
+      objViewport = {
+        width: Number(req.query.w),
+        height: Number(req.query.h)
+      };
+      console.log(objViewport);
+      res.writeHead(200, { 'Content-Type': 'text/plain' });
+      res.end(JSON.stringify(objViewport));
+    } else {
+      res.end();
+    }
+  } catch (e) { res.end(e.toString()) }
+});
+
+app.get('/setProxy', async (req, res) => {
+  try {
+    const hasAuth = String(req.query.token) === String(token);
+    if (hasAuth && isInitiated && !isOpened) {
+      strProxy = decodeURIComponent(req.query.proxy);
+      console.log(strProxy);
+      res.writeHead(200, { 'Content-Type': 'text/plain' });
+      res.end(strProxy);
     } else {
       res.end();
     }
@@ -79,28 +159,80 @@ app.get('/open', async (req, res) => {
           args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
-            '--user-agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/65.0.3312.0 Safari/537.36"'
+            //'--user-agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/65.0.3312.0 Safari/537.36"'
           ],
           executablePath: '/usr/bin/google-chrome'
         });
       } else {
         browser = await puppeteer.launch({
           args: [
-            '--user-agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/65.0.3312.0 Safari/537.36"'
+            //'--user-agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/65.0.3312.0 Safari/537.36"'
           ],
         });
       }
-
-      page = await browser.newPage();
-      console.log(req.query);
-      const width = Number(req.query.w) || 640;
-      const height = Number(req.query.h) || 480;
-      await page.setViewport({ width, height });
-      const preloadFile = fs.readFileSync('./preload.js', 'utf8');
-      await page.evaluateOnNewDocument(preloadFile);
+      let pages = await browser.pages();
+      page = pages[0];
       isOpened = true;
+
       res.writeHead(200, { 'Content-Type': 'text/plain' });
       res.end('opened');
+    } else {
+      res.end();
+    }
+  } catch (e) { res.end(e.toString()) }
+});
+
+app.get('/createTab', async (req, res) => {
+  try {
+    const hasAuth = String(req.query.token) === String(token);
+    if (hasAuth && isOpened) {
+      page = await browser.newPage();
+      console.log(req.query);
+      if(strUserAgent){
+        await page.setUserAgent(strUserAgent);
+      }
+      if(strProxy){
+        await useProxy(page, strProxy);
+      }
+      await page.setViewport(objViewport);
+
+      const preloadFile = fs.readFileSync('./preload.js', 'utf8');
+      await page.evaluateOnNewDocument(preloadFile);
+
+      let pages = await browser.pages();
+
+      res.writeHead(200, { 'Content-Type': 'text/plain' });
+      res.end('tab created: ' + pages.length);
+    } else {
+      res.end();
+    }
+  } catch (e) { res.end(e.toString()) }
+});
+
+app.get('/nextTab', async (req, res) => {
+  try {
+    const hasAuth = String(req.query.token) === String(token);
+    if (hasAuth && isOpened) {
+      let pages = await browser.pages();
+      tabIndex = Math.min(tabIndex+1, pages.length);
+      page = pages[tabIndex];
+      res.writeHead(200, { 'Content-Type': 'text/plain' });
+      res.end(String(tabIndex));
+    } else {
+      res.end();
+    }
+  } catch (e) { res.end(e.toString()) }
+});
+
+app.get('/prevTab', async (req, res) => {
+  try {
+    const hasAuth = String(req.query.token) === String(token);
+    if (hasAuth && isOpened) {
+      let pages = await browser.pages();
+      tabIndex = Math.max(0, tabIndex-1);
+      page = pages[tabIndex];
+      res.writeHead(200, { 'Content-Type': 'text/plain' });
+      res.end(String(tabIndex));
     } else {
       res.end();
     }

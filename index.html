@@ -6,53 +6,97 @@
   <meta name='viewport' content='width=device-width, initial-scale=1.0' />
 </head>
 
+
 <body>
   <h1>pupit client</h1>
-  <p>
-    <button id='init'>init</button>
-  </p><p>
-    <select id='resolution'>
-      <option value='w=1920&h=1080&'>1920x1080</option>
-      <option value='w=640&h=480&'>640x480</option>
-    </select>
-    <button id='open'>open</button>
-  </p><p>
-      <input type='text' id='url' placeholder='url' value='https://pptr.dev' />
-      <button id='goto'>navigate</button>
-  </p><p>
-    <input type='text' id='rect' placeholder='x,y,w,h' value='' />
-    <button id='screenshot'>screenshot</button>
-  </p><p>
-    <input type='text' id='txt' placeholder='text' value='' />
-    <button id='enterText'>enter</button>
-  </p><p>
-    <select id='key' placeholder='key'>
-      <option value='Enter'>Enter</option>
-      <option value='Tab'>Tab</option>
-      <option value='Space'>Space</option>
-      <option value='Escape'>Escape</option>
-      <option value='Backspace'>Backspace</option>
-      <option value='CapsLock'>CapsLock</option>
-      <option value='ArrowUp'>Up</option>
-      <option value='ArrowDown'>Down</option>
-      <option value='ArrowLeft'>Left</option>
-      <option value='ArrowRight'>Right</option>
-      <option value='VolumeUp'>VolumeUp</option>
-      <option value='VolumeDown'>VolumeDown</option>
-    </select>
-    <button id='pressKey'>press</button>
-  </p><p>
-    <textarea id='taExec' placeholder='alert()'></textarea>
-    <button id='exec'>exec</button>
-  </p><p>
-    <button id='close'>close</button>
-  </p>
+  <table>
+    <tr>
+      <td>
+        <p>
+          <button id='init'>init</button>
+          <button id='genUserAgent'>gen user agent</button>
+        </p>
+        <p>
+          <input type='text' id='proxy' placeholder='http://user:password@ip:port'
+            value='http://zLF8zbZ8:6wTgNPxt@185.112.100.169:29137' />
+          <button id='setProxy'>set proxy</button>
+        </p>
+        <p>
+          <select id='resolution'>
+            <option value='w=1920&h=1080&'>1920x1080</option>
+            <option value='w=1024&h=768&' selected='selected'>1024x768</option>
+            <option value='w=640&h=480&'>640x480</option>
+          </select>
+          <button id='setViewportSize'>set viewport size</button>
+        </p>
+        <p>       
+          <button id='open'>open</button>
+        </p>
+        <p>  
+          <span>tabs: </span>
+          <button id='create'>create</button>
+          <button id='prev'>prev</button>
+          <button id='next'>next</button>
+        </p>
+        <p>
+          <input type='text' id='url' placeholder='url' value='https://pptr.dev' />
+          <button id='goto'>navigate</button>
+        </p>
+        <p>
+          <input type='text' id='rect' placeholder='x,y,w,h' value='' />
+          <button id='screenshot'>screenshot</button>
+        </p>
+        <p>
+          <input type='text' id='txt' placeholder='text' value='' />
+          <button id='enterText'>enter</button>
+        </p>
+        <p>
+          <select id='key' placeholder='key'>
+            <option value='Enter'>Enter</option>
+            <option value='Tab'>Tab</option>
+            <option value='Space'>Space</option>
+            <option value='Escape'>Escape</option>
+            <option value='Backspace'>Backspace</option>
+            <option value='CapsLock'>CapsLock</option>
+            <option value='ArrowUp'>Up</option>
+            <option value='ArrowDown'>Down</option>
+            <option value='ArrowLeft'>Left</option>
+            <option value='ArrowRight'>Right</option>
+            <option value='VolumeUp'>VolumeUp</option>
+            <option value='VolumeDown'>VolumeDown</option>
+          </select>
+          <button id='pressKey'>press</button>
+        </p>
+        <p>
+          <textarea id='taExec' placeholder='alert()'></textarea>
+          <button id='exec'>exec</button>
+        </p>
+        <p>
+          <button id='close'>close</button>
+        </p>
+      </td>
+      <td>
+        <textarea id='sequence' style='height:300px' placeholder='init&#10;genUserAgent&#10;'></textarea>
+        <p>
+          <button id='clear'>clear</button>
+          <button id='seqExec'>seq exec</button>
+        </p>
+      </td>
+    </tr>
+  </table>
   <img />
   <script>
     const imgScreenshot = document.querySelector('img');
     const initButton = document.querySelector('#init');
+    const genUserAgentButton = document.querySelector('#genUserAgent');
+    const proxyInput = document.querySelector('#proxy');
+    const setProxyButton = document.querySelector('#setProxy');
     const resolutionSelect = document.querySelector('#resolution');
+    const setViewportSizeButton = document.querySelector('#setViewportSize');
     const openButton = document.querySelector('#open');
+    const createTabButton = document.querySelector('#create');
+    const prevTabButton = document.querySelector('#prev');
+    const nextTabButton = document.querySelector('#next');
     const urlInput = document.querySelector('#url');
     const gotoButton = document.querySelector('#goto');
     const rectInput = document.querySelector('#rect');
@@ -64,113 +108,209 @@
     const taExec = document.querySelector('#taExec');
     const execButton = document.querySelector('#exec');
     const closeButton = document.querySelector('#close');
+    const taSequence = document.querySelector('#sequence');
+    const clearButton = document.querySelector('#clear');
+    const seqExecButton = document.querySelector('#seqExec');
 
-    const pass ='pass';
-    const wait = tm=>new Promise(res=>setTimeout(res,tm));
+    const pass = 'pass';
+    let token = null;
+
+    const wait = tm => new Promise(res => setTimeout(res, tm));
     const hashCode = s => s.split('').reduce((a, b) => (((a << 5) - a) + b.charCodeAt(0)) | 0, 0);
     const arrayBufferToBase64 = (
       buf, typedArray, array, str
-    )=>{
+    ) => {
       typedArray = new Uint8Array(buf);
       array = [...typedArray];
-      str = array.map(b=>String.fromCharCode(b)).join('');
+      str = array.map(b => String.fromCharCode(b)).join('');
       return btoa(str);
     };
-/*
-    function getPosition(el) {
-      var xPosition = 0;
-      var yPosition = 0;
-    
-      while (el) {
-        if (el.tagName == "BODY") {
-          // deal with browser quirks with body/window/document and page scroll
-          var xScrollPos = el.scrollLeft || document.documentElement.scrollLeft;
-          var yScrollPos = el.scrollTop || document.documentElement.scrollTop;
-    
-          xPosition += (el.offsetLeft - xScrollPos + el.clientLeft);
-          yPosition += (el.offsetTop - yScrollPos + el.clientTop);
-        } else {
-          xPosition += (el.offsetLeft - el.scrollLeft + el.clientLeft);
-          yPosition += (el.offsetTop - el.scrollTop + el.clientTop);
-        }
-    
-        el = el.offsetParent;
-      }
-      return {
-        x: xPosition,
-        y: yPosition
-      };
-    }
-*/
-      initButton.onclick = async(e,r,txt,randStr)=>{
-        r = await fetch('init');
-        txt = await r.text();
-        alert(txt);
-        randStr = txt;
-        window.token = hashCode(pass+randStr);
-      };
 
-      openButton.onclick = async(e,resolution,r,txt)=>{
-        resolution = resolutionSelect.value;
-        r = await fetch('open?'+resolution+'&token='+token);
-        txt = await r.text();
-        alert(txt);
-      };
-
-      gotoButton.onclick = async(e,url,r,txt)=>{
-        url = urlInput.value;
-        r = await fetch('goto?url='+url+'&token='+token);
-        txt = await r.text();
-        alert(txt);
-      };
-
-      screenshotButton.onclick = async(
-        e,rect,r,buf,imgStr
-      )=>{
-        rect = rectInput.value;
-        r = await fetch('screenshot?rect='+rect+'&token='+token);
-        buf = await r.arrayBuffer();
-        imgStr = 'data:image/jpeg;base64,';
+    const cmds = {
+      'wait': async(ms)=>{
+        await wait(ms);
+        return 'success';
+      },
+      'init': async()=>{
+        const r = await fetch('init');
+        const txt = await r.text();
+        const randStr = txt;
+        token = hashCode(pass + randStr);
+        return txt;
+      },
+      'gen_user_agent': async()=>{
+        const r = await fetch('genUserAgent?token=' + token);
+        const txt = await r.text();
+        return txt;
+      },
+      'set_proxy': async(proxy)=>{
+        const encodedProxyString = encodeURIComponent(proxy);
+        const r = await fetch('setProxy?proxy=' + encodedProxyString + '&token=' + token);
+        const txt = await r.text();
+        return txt;
+      },
+      'set_viewport_size': async(resolution)=>{
+        const r = await fetch('setViewportSize?' + resolution + '&token=' + token);
+        const txt = await r.text();
+        return txt;
+      },
+      'open': async()=>{
+        const r = await fetch('open?token=' + token);
+        const txt = await r.text();
+        return txt;
+      },
+      'create_tab': async()=>{
+        const r = await fetch('createTab?token=' + token);
+        const txt = await r.text();
+        return txt;
+      },
+      'prev_tab': async()=>{
+        const r = await fetch('prevTab?token=' + token);
+        const txt = await r.text();
+        return txt;
+      },
+      'next_tab': async()=>{
+        const r = await fetch('nextTab?token=' + token);
+        const txt = await r.text();
+        return txt;
+      },
+      'goto': async(url)=>{
+        const r = await fetch('goto?url=' + url + '&token=' + token);
+        const txt = await r.text();
+        return txt;
+      },
+      'screenshot': async(rect)=>{
+        const r = await fetch('screenshot?rect=' + rect + '&token=' + token);
+        const buf = await r.arrayBuffer();
+        let imgStr = 'data:image/jpeg;base64,';
         imgStr += arrayBufferToBase64(buf);
         imgScreenshot.src = imgStr;
-      };
+        return 'success';
+      },
+      'click': async(x,y)=>{
+        const r = await fetch('click?x=' + x + '&y=' + y + '&token=' + token);
+        const txt = await r.text();
+        return txt;
+      },
+      'enter_text': async(text)=>{
+        const encodedText = encodeURIComponent(text);
+        const r = await fetch('enterText?txt=' + encodedText + '&token=' + token);
+        const txt = await r.text();
+        return txt;
+      },
+      'press_key': async(key)=>{
+        const r = await fetch('pressKey?key=' + key + '&token=' + token);
+        const txt = await r.text();
+        return txt;
+      },
+      'exec': async(js)=>{
+        const jse = encodeURIComponent(js);
+        const r = await fetch('exec?js=' + jse + '&token=' + token);
+        const txt = await r.text();
+        return txt;
+      },
+      'close': async()=>{
+        const r = await fetch('close?token=' + token);
+        const txt = await r.text();
+        return txt;
+      },
+    };
 
-      imgScreenshot.onclick = async(e,rect,x,y,r,txt)=>{
-        rect = e.target.getBoundingClientRect();
-        x = Math.floor(e.clientX - rect.left); //x position within the element.
-        y = Math.floor(e.clientY - rect.top); 
-        r = await fetch('click?x='+x+'&y='+y+'&token='+token);
-        txt = await r.text();
-        alert(txt);
-      };
+    const executeCmd = async(strCmd) => {
+      taSequence.value += strCmd;
+      const arrCmd = strCmd.split(' ');
+      const [type, ...args] = arrCmd;
+      const r = await cmds[type](...args);
+      taSequence.value += ` => ${r}\n`;
+      taSequence.scrollTop = taSequence.scrollHeight;
+      return r;
+    }
 
-      enterTextButton.onclick = async(e,text,r,txt)=>{
-        text = encodeURIComponent(txtInput.value);
-        r = await fetch('enterText?txt='+text+'&token='+token);
-        txt = await r.text();
-        console.log(txt);
-      };
 
-      pressKeyButton.onclick = async(e,key,r,txt)=>{
-        key = keySelect.value;
-        r = await fetch('pressKey?key='+key+'&token='+token);
-        txt = await r.text();
-        alert(txt);
-      };
+    initButton.onclick = async() => {
+      await executeCmd('init');
+    };
 
-      execButton.onclick = async(e,js,r,txt)=>{
-        js = encodeURIComponent(taExec.value);
-        r = await fetch('exec?js='+js+'&token='+token);
-        txt = await r.text();
-        alert(txt);
-      };
+    genUserAgentButton.onclick = async() => {
+      await executeCmd('gen_user_agent');
+    };
 
-      closeButton.onclick = async(e,r,txt)=>{
-        let url = urlInput.value;
-        r = await fetch('close?token='+token);
-        txt = await r.text();
-        alert(txt);
-      };
+    setProxyButton.onclick = async() => {
+      const proxy = proxyInput.value;
+      await executeCmd(`set_proxy ${proxy}`);
+    };
+
+    setViewportSizeButton.onclick = async() => {
+      const resolution = resolutionSelect.value;
+      await executeCmd(`set_viewport_size ${resolution}`);
+    };
+
+    openButton.onclick = async() => {
+      await executeCmd(`open`);
+    };
+
+    createTabButton.onclick = async() => {
+      await executeCmd(`create_tab`);
+    };
+    prevTabButton.onclick = async() => {
+      await executeCmd(`prev_tab`);
+    };
+    nextTabButton.onclick = async() => {
+      await executeCmd(`next_tab`);
+    };
+
+    gotoButton.onclick = async() => {
+      const url = urlInput.value;
+      await executeCmd(`goto ${url}`);
+    };
+
+    screenshotButton.onclick = async() => {
+      const rect = rectInput.value;
+      await executeCmd(`screenshot ${rect}`);
+    };
+
+    imgScreenshot.onclick = async(e) => {
+      const rect = e.target.getBoundingClientRect();
+      const x = Math.floor(e.clientX - rect.left); //x position within the element.
+      const y = Math.floor(e.clientY - rect.top);
+      await executeCmd(`click ${x} ${y}`);
+    };
+
+    enterTextButton.onclick = async() => {
+      const text = txtInput.value
+      await executeCmd(`enter_text ${text}`);
+    };
+
+    pressKeyButton.onclick = async() => {
+      const key = keySelect.value;
+      await executeCmd(`press_key ${key}`);
+    };
+
+    execButton.onclick = async() => {
+      const js = taExec.value;
+      // .replace(/\\/g,"\\\\")
+      // .replace(/`/g,"\\\`");
+      await executeCmd(`exec ${js}`);
+    };
+
+    closeButton.onclick = async() => {
+      await executeCmd('close');
+    };
+
+    clearButton.onclick = e => {
+      taSequence.value = taSequence.value.replace(/ => .*$/gm, '');
+    };
+
+    seqExecButton.onclick = async() => {
+      const seq = taSequence.value
+        .replace(/ => .*$/gm, '')
+        .split('\n')
+        .slice(0, -1)
+      for (let i = 0; i < seq.length; i++) {
+        await (executeCmd(seq[i]));
+      }
+      alert(seq);
+    };
   </script>
 </body>
 
