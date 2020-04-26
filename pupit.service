@@ -2,7 +2,7 @@
 Description="pupit"
 
 [Service]
-ExecStart=/usr/bin/node server.js
+ExecStart=/usr/bin/node --experimental-modules server.mjs
 WorkingDirectory=/srv/pupit
 Restart=always
 RestartSec=10

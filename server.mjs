@@ -1,16 +1,22 @@
 //npm install puppeteer-page-proxy user-agents --save
 //node --experimental-modules server.mjs
+import fs from 'fs';
 import express from 'express';
 import puppeteer from 'puppeteer';
 import useProxy from 'puppeteer-page-proxy';
-import fs from 'fs';
-import UserAgent from 'user-agents'; 
+import UserAgent from 'user-agents';
+import devices from 'puppeteer/DeviceDescriptors.js';
+import os from 'os';
+
+const port = process.env.PORT || 4000;
+const pass = 'pass';
 
 let browser = undefined;
 let tabIndex = 0;
 let page = undefined;
 let token = undefined;
 let strUserAgent = undefined;
+let device = undefined;
 let strProxy = undefined;
 let objViewport = {
   width: 1024,
@@ -20,7 +26,6 @@ let objViewport = {
 let isInitiated = false;
 let isOpened = false;
 let isNavigated = false;
-const pass = 'pass';
 
 const wait = tm => new Promise(res => setTimeout(res, tm));
 const hashCode = s => s.split('').reduce((a, b) => (((a << 5) - a) + b.charCodeAt(0)) | 0, 0)
@@ -38,7 +43,22 @@ const readFile = filename => new Promise((resolve, reject) => {
 });
 
 const app = express();
-const port = process.env.PORT || 4000;
+
+const applyPageParams = async(page)=>{
+  if(strUserAgent){
+    await page.setUserAgent(strUserAgent);
+  }
+  if(device){
+    await page.emulate(device);
+  }
+  if(strProxy){
+    await useProxy(page, strProxy);
+  }
+  await page.setViewport(objViewport);
+  const preloadFile = fs.readFileSync('./preload.js', 'utf8');
+  await page.evaluateOnNewDocument(preloadFile);
+};
+
 
 app.use((req, res, next)=>{
   console.log(`${dt()}: query: ${req.originalUrl}`);
@@ -135,6 +155,22 @@ app.get('/setViewportSize', async (req, res) => {
   } catch (e) { res.end(e.toString()) }
 });
 
+
+app.get('/emulateDevice', async (req, res) => {
+  try {
+    const hasAuth = String(req.query.token) === String(token);
+    if (hasAuth && isInitiated && !isOpened) {
+      let strDevice = req.query.device.replace('_',' ');
+      device = devices[strDevice];
+      console.log(strDevice,device);
+      res.writeHead(200, { 'Content-Type': 'text/plain' });
+      res.end(strDevice);
+    } else {
+      res.end();
+    }
+  } catch (e) { res.end(e.toString()) }
+});
+
 app.get('/setProxy', async (req, res) => {
   try {
     const hasAuth = String(req.query.token) === String(token);
@@ -166,12 +202,24 @@ app.get('/open', async (req, res) => {
       } else {
         browser = await puppeteer.launch({
           args: [
+            //'--disable-gpu',
+            //'--disable-dev-shm-usage',
+            //'--disable-setuid-sandbox',
+            //'--no-first-run',
+            //'--no-sandbox',
+            //'--no-zygote',
+            //'--single-process',
+            //--ignore-certificate-errors',
+            //'--enable-features=NetworkService'
             //'--user-agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/65.0.3312.0 Safari/537.36"'
           ],
+          //ignoreHTTPSErrors: true,
+          headless: false, //slowMo: 200
         });
       }
       let pages = await browser.pages();
       page = pages[0];
+      await applyPageParams(page);
       isOpened = true;
 
       res.writeHead(200, { 'Content-Type': 'text/plain' });
@@ -187,20 +235,9 @@ app.get('/createTab', async (req, res) => {
     const hasAuth = String(req.query.token) === String(token);
     if (hasAuth && isOpened) {
       page = await browser.newPage();
-      console.log(req.query);
-      if(strUserAgent){
-        await page.setUserAgent(strUserAgent);
-      }
-      if(strProxy){
-        await useProxy(page, strProxy);
-      }
-      await page.setViewport(objViewport);
-
-      const preloadFile = fs.readFileSync('./preload.js', 'utf8');
-      await page.evaluateOnNewDocument(preloadFile);
+      await applyPageParams(page);
 
       let pages = await browser.pages();
-
       res.writeHead(200, { 'Content-Type': 'text/plain' });
       res.end('tab created: ' + pages.length);
     } else {
@@ -214,7 +251,7 @@ app.get('/nextTab', async (req, res) => {
     const hasAuth = String(req.query.token) === String(token);
     if (hasAuth && isOpened) {
       let pages = await browser.pages();
-      tabIndex = Math.min(tabIndex+1, pages.length);
+      tabIndex = Math.min(tabIndex+1, pages.length-1);
       page = pages[tabIndex];
       res.writeHead(200, { 'Content-Type': 'text/plain' });
       res.end(String(tabIndex));
@@ -244,7 +281,8 @@ app.get('/goto', async (req, res) => {
   try {
     const hasAuth = String(req.query.token) === String(token);
     if (hasAuth && isOpened) {
-      await page.goto(req.query.url);
+      let url = decodeURIComponent(req.query.url);
+      await page.goto(url);
       isNavigated = true;
       res.writeHead(200, { 'Content-Type': 'text/plain' });
       res.end('navigated');
@@ -348,7 +386,7 @@ app.get('/exec', async (req, res) => {
         }, js);
       }
       res.writeHead(200, { 'Content-Type': 'text/plain' });
-      res.end('processed:'+result);
+      res.end(result);
     } else {
       res.end();
     }
@@ -391,5 +429,13 @@ app.get('/close', async (req, res) => {
   } catch (e) { res.end(e.toString()) }
 });
 
-console.log('server started at http://127.0.0.1:' + port)
+let networkInterfaces = os.networkInterfaces();
+let ips = Object
+.values(networkInterfaces)
+.flat()
+.filter(it=>it.family==='IPv4')
+.map(it=>it.address);
+let urls = ips.map(ip => `http://${ip}:${port}/`).join(', ');
+
+console.log('server started at ' + urls);
 app.listen(port);

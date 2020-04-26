@@ -10,7 +10,7 @@ ln -s /usr/bin/google-chrome-stable /usr/bin/google-chrome
 echo chrome installed >> /var/log/install-pupit-service.log
 
 echo nodejs installing >> /var/log/install-pupit-service.log
-curl --silent --location https://rpm.nodesource.com/setup_10.x | sudo bash -
+curl --silent --location https://rpm.nodesource.com/setup_12.x | sudo bash -
 yum -y install nodejs
 echo nodejs installed >> /var/log/install-pupit-service.log
 
@@ -26,13 +26,13 @@ echo navigating to /srv/pupit >> /var/log/install-pupit-service.log
 cd pupit
 echo navigated to /srv/pupit >> /var/log/install-pupit-service.log
 
-echo express installing >> /var/log/install-pupit-service.log
-npm install express
-echo express installed >> /var/log/install-pupit-service.log
-
-echo pupiter installing >> /var/log/install-pupit-service.log
-PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=1 npm install puppeteer
+echo installing pupiter >> /var/log/install-pupit-service.log
+PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=1 npm install puppeteer puppeteer-page-proxy
 echo pupiter installed >> /var/log/install-pupit-service.log
+
+echo installing express puppeteer-page-proxy user-agents >> /var/log/install-pupit-service.log
+npm install express user-agents
+echo express puppeteer-page-proxy user-agents installed >> /var/log/install-pupit-service.log
 
 echo service file coping >> /var/log/install-pupit-service.log
 cp pupit.service /etc/systemd/system/

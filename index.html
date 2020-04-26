@@ -17,17 +17,27 @@
           <button id='genUserAgent'>gen user agent</button>
         </p>
         <p>
-          <input type='text' id='proxy' placeholder='http://user:password@ip:port'
-            value='http://zLF8zbZ8:6wTgNPxt@185.112.100.169:29137' />
-          <button id='setProxy'>set proxy</button>
-        </p>
-        <p>
           <select id='resolution'>
             <option value='w=1920&h=1080&'>1920x1080</option>
             <option value='w=1024&h=768&' selected='selected'>1024x768</option>
             <option value='w=640&h=480&'>640x480</option>
           </select>
           <button id='setViewportSize'>set viewport size</button>
+        </p>
+        <p>
+          <select id='device'>
+            <option value='iPhone X'>iPhone X</option>
+            <option value='iPhone X landscape'>iPhone X landscape</option>
+            <option value='Nexus 10'>Nexus 10</option>
+            <option value='JioPhone 2'>JioPhone 2</option>
+            <option value='Pixel 2 XL landscape'>Pixel 2 XL landscape</option>
+          </select>
+          <button id='emulateDevice'>emulate device</button>
+        </p>
+        <p>
+          <input type='text' id='proxy' placeholder='http://user:password@ip:port'
+            value='http://zLF8zbZ8:6wTgNPxt@185.112.100.169:29137' />
+          <button id='setProxy'>set proxy</button>
         </p>
         <p>       
           <button id='open'>open</button>
@@ -79,7 +89,9 @@
         <textarea id='sequence' style='height:300px' placeholder='init&#10;genUserAgent&#10;'></textarea>
         <p>
           <button id='clear'>clear</button>
-          <button id='seqExec'>seq exec</button>
+          <span>exec:</span>
+          <button id='start'>start</button>
+          <button id='stop'>stop</button>
         </p>
       </td>
     </tr>
@@ -89,10 +101,12 @@
     const imgScreenshot = document.querySelector('img');
     const initButton = document.querySelector('#init');
     const genUserAgentButton = document.querySelector('#genUserAgent');
-    const proxyInput = document.querySelector('#proxy');
-    const setProxyButton = document.querySelector('#setProxy');
     const resolutionSelect = document.querySelector('#resolution');
     const setViewportSizeButton = document.querySelector('#setViewportSize');
+    const deviceSelect = document.querySelector('#device');
+    const emulateDeviceButton = document.querySelector('#emulateDevice');
+    const proxyInput = document.querySelector('#proxy');
+    const setProxyButton = document.querySelector('#setProxy');
     const openButton = document.querySelector('#open');
     const createTabButton = document.querySelector('#create');
     const prevTabButton = document.querySelector('#prev');
@@ -110,10 +124,15 @@
     const closeButton = document.querySelector('#close');
     const taSequence = document.querySelector('#sequence');
     const clearButton = document.querySelector('#clear');
-    const seqExecButton = document.querySelector('#seqExec');
+    const seqExecButton = document.querySelector('#start');
+    const seqExecStopButton = document.querySelector('#stop');
+    
 
     const pass = 'pass';
     let token = null;
+    let mustStop = false;
+    let lastResult = undefined;
+    let variables = {};
 
     const wait = tm => new Promise(res => setTimeout(res, tm));
     const hashCode = s => s.split('').reduce((a, b) => (((a << 5) - a) + b.charCodeAt(0)) | 0, 0);
@@ -126,11 +145,21 @@
       return btoa(str);
     };
 
+
     const cmds = {
       'wait': async(ms)=>{
         await wait(ms);
         return 'success';
       },
+      'put_last_result_to': (name)=>{
+        variables[name] = lastResult;
+        return 'success';
+      },
+      'eval': async(...arrJs)=>{
+        const strJs = arrJs.join(' ');
+        return await eval(strJs);
+      },
+      'comment': ()=>'',
       'init': async()=>{
         const r = await fetch('init');
         const txt = await r.text();
@@ -143,14 +172,19 @@
         const txt = await r.text();
         return txt;
       },
-      'set_proxy': async(proxy)=>{
-        const encodedProxyString = encodeURIComponent(proxy);
-        const r = await fetch('setProxy?proxy=' + encodedProxyString + '&token=' + token);
+      'set_viewport_size': async(resolution)=>{
+        const r = await fetch('setViewportSize?' + resolution + '&token=' + token);
         const txt = await r.text();
         return txt;
       },
-      'set_viewport_size': async(resolution)=>{
-        const r = await fetch('setViewportSize?' + resolution + '&token=' + token);
+      'emulate_device': async(unspacedDeviceString)=>{
+        const r = await fetch('emulateDevice?device=' + unspacedDeviceString + '&token=' + token);
+        const txt = await r.text();
+        return txt;
+      },
+      'set_proxy': async(proxy)=>{
+        const encodedProxyString = encodeURIComponent(proxy);
+        const r = await fetch('setProxy?proxy=' + encodedProxyString + '&token=' + token);
         const txt = await r.text();
         return txt;
       },
@@ -175,12 +209,16 @@
         return txt;
       },
       'goto': async(url)=>{
-        const r = await fetch('goto?url=' + url + '&token=' + token);
+        const encodedUrlString = encodeURIComponent(url);
+        const r = await fetch('goto?url=' + encodedUrlString + '&token=' + token);
         const txt = await r.text();
         return txt;
       },
       'screenshot': async(rect)=>{
-        const r = await fetch('screenshot?rect=' + rect + '&token=' + token);
+        let strRequest = 'screenshot?token=' + token;
+        if(rect) strRequest += '&rect=' + rect;
+
+        const r = await fetch(strRequest);
         const buf = await r.arrayBuffer();
         let imgStr = 'data:image/jpeg;base64,';
         imgStr += arrayBufferToBase64(buf);
@@ -203,9 +241,10 @@
         const txt = await r.text();
         return txt;
       },
-      'exec': async(js)=>{
-        const jse = encodeURIComponent(js);
-        const r = await fetch('exec?js=' + jse + '&token=' + token);
+      'exec': async(...arrJs)=>{
+        const strJs = arrJs.join(' ');
+        const strJsEncoded = encodeURIComponent(strJs);
+        const r = await fetch('exec?js=' + strJsEncoded + '&token=' + token);
         const txt = await r.text();
         return txt;
       },
@@ -217,84 +256,95 @@
     };
 
     const executeCmd = async(strCmd) => {
-      taSequence.value += strCmd;
+      strCmd = strCmd.replace(/{\|(\w+)\|}/g,(_,name)=>variables[name]);
       const arrCmd = strCmd.split(' ');
       const [type, ...args] = arrCmd;
       const r = await cmds[type](...args);
+      lastResult = r;
+      return r;
+    };
+
+    const executeSingleCmd = async(strCmd) => {
+      taSequence.value += strCmd;
+      const r = await executeCmd(strCmd);
       taSequence.value += ` => ${r}\n`;
       taSequence.scrollTop = taSequence.scrollHeight;
       return r;
-    }
-
+    };
 
     initButton.onclick = async() => {
-      await executeCmd('init');
+      await executeSingleCmd('init');
     };
 
     genUserAgentButton.onclick = async() => {
-      await executeCmd('gen_user_agent');
+      await executeSingleCmd('gen_user_agent');
     };
 
     setProxyButton.onclick = async() => {
       const proxy = proxyInput.value;
-      await executeCmd(`set_proxy ${proxy}`);
+      await executeSingleCmd(`set_proxy ${proxy}`);
     };
 
     setViewportSizeButton.onclick = async() => {
       const resolution = resolutionSelect.value;
-      await executeCmd(`set_viewport_size ${resolution}`);
+      await executeSingleCmd(`set_viewport_size ${resolution}`);
+    };
+
+    emulateDeviceButton.onclick = async() => {
+      const unspasedDeviceString = deviceSelect.value.replace(' ','_');
+      await executeSingleCmd(`emulate_device ${unspasedDeviceString}`);
     };
 
     openButton.onclick = async() => {
-      await executeCmd(`open`);
+      await executeSingleCmd(`open`);
     };
 
     createTabButton.onclick = async() => {
-      await executeCmd(`create_tab`);
+      await executeSingleCmd(`create_tab`);
     };
     prevTabButton.onclick = async() => {
-      await executeCmd(`prev_tab`);
+      await executeSingleCmd(`prev_tab`);
     };
     nextTabButton.onclick = async() => {
-      await executeCmd(`next_tab`);
+      await executeSingleCmd(`next_tab`);
     };
 
     gotoButton.onclick = async() => {
       const url = urlInput.value;
-      await executeCmd(`goto ${url}`);
+      await executeSingleCmd(`goto ${url}`);
     };
 
     screenshotButton.onclick = async() => {
       const rect = rectInput.value;
-      await executeCmd(`screenshot ${rect}`);
+      await executeSingleCmd(`screenshot ${rect}`);
     };
 
     imgScreenshot.onclick = async(e) => {
       const rect = e.target.getBoundingClientRect();
       const x = Math.floor(e.clientX - rect.left); //x position within the element.
       const y = Math.floor(e.clientY - rect.top);
-      await executeCmd(`click ${x} ${y}`);
+      await executeSingleCmd(`click ${x} ${y}`);
     };
 
     enterTextButton.onclick = async() => {
       const text = txtInput.value
-      await executeCmd(`enter_text ${text}`);
+      await executeSingleCmd(`enter_text ${text}`);
     };
 
     pressKeyButton.onclick = async() => {
       const key = keySelect.value;
-      await executeCmd(`press_key ${key}`);
+      await executeSingleCmd(`press_key ${key}`);
     };
 
     execButton.onclick = async() => {
       const js = taExec.value;
       // .replace(/\\/g,"\\\\")
       // .replace(/`/g,"\\\`");
-      await executeCmd(`exec ${js}`);
+      await executeSingleCmd(`exec ${js}`);
     };
 
     closeButton.onclick = async() => {
-      await executeCmd('close');
+      await executeSingleCmd('close');
     };
 
     clearButton.onclick = e => {
@@ -302,14 +352,24 @@
     };
 
     seqExecButton.onclick = async() => {
-      const seq = taSequence.value
-        .replace(/ => .*$/gm, '')
-        .split('\n')
-        .slice(0, -1)
-      for (let i = 0; i < seq.length; i++) {
-        await (executeCmd(seq[i]));
+      mustStop = false;
+      const arrSeq = taSequence.value.split('\n');
+      const execIndex = arrSeq.findIndex(str=>!str.includes(' => '));
+      for (let i = execIndex; i < arrSeq.length; i++) {
+        if(mustStop) break;
+        let strCmd = arrSeq[i];
+        if(!strCmd) continue;
+        let isExecuted = strCmd.includes(' => ');
+        if(isExecuted) continue;
+        let r = await executeCmd(strCmd);
+        arrSeq[i] = `${strCmd} => ${r}`;
+        taSequence.value = arrSeq.join('\n');
       }
-      alert(seq);
+      alert(arrSeq);
+    };
+
+    seqExecStopButton.onclick = async() => {
+      mustStop = true;
     };
   </script>
 </body>
