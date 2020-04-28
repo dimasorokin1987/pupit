@@ -230,8 +230,9 @@
         const txt = await r.text();
         return txt;
       },
-      'enter_text': async(text)=>{
-        const encodedText = encodeURIComponent(text);
+      'enter_text': async(...arrText)=>{
+        const strText = arrText.join(' ');
+        const encodedText = encodeURIComponent(strText);
         const r = await fetch('enterText?txt=' + encodedText + '&token=' + token);
         const txt = await r.text();
         return txt;

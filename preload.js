@@ -17,3 +17,11 @@ Object.defineProperty(navigator, 'webdriver', {
 Object.defineProperty(navigator, 'permissions', {
   get: () => undefined
 });
+
+((window, open) => {//useless
+  window.open = (url) => {
+      open.call(window, url, '_self');
+  };
+})(window, window.open);
+
+console.log(navigator.userAgent)

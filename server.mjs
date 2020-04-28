@@ -27,6 +27,12 @@ let isInitiated = false;
 let isOpened = false;
 let isNavigated = false;
 
+if (!Array.prototype.flat) {
+  Array.prototype.flat=function(){
+    return this.reduce((acc, val) => acc.concat(val), []);
+  }
+}
+
 const wait = tm => new Promise(res => setTimeout(res, tm));
 const hashCode = s => s.split('').reduce((a, b) => (((a << 5) - a) + b.charCodeAt(0)) | 0, 0)
 const dt = () => {
@@ -217,6 +223,16 @@ app.get('/open', async (req, res) => {
           headless: false, //slowMo: 200
         });
       }
+      browser.on('targetcreated', async(target)=>{
+        //console.log('New Tab Created');
+        //console.log(target.type());
+        if (target.type() === 'page') {
+          console.log('New Page Created');
+          const newPage = await target.page();
+          await applyPageParams(newPage);
+        }
+      });
+
       let pages = await browser.pages();
       page = pages[0];
       await applyPageParams(page);
@@ -235,7 +251,7 @@ app.get('/createTab', async (req, res) => {
     const hasAuth = String(req.query.token) === String(token);
     if (hasAuth && isOpened) {
       page = await browser.newPage();
-      await applyPageParams(page);
+      //await applyPageParams(page);
 
       let pages = await browser.pages();
       res.writeHead(200, { 'Content-Type': 'text/plain' });
