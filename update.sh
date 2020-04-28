@@ -1,9 +1,5 @@
 #!/bin/bash
 
-echo navigating to /srv/pupit >> /var/log/install-pupit-service.log
-cd /srv/pupit
-echo navigated to /srv/pupit >> /var/log/install-pupit-service.log
-
 echo service stopping >> /var/log/install-pupit-service.log
 systemctl stop pupit.service
 echo service stopped >> /var/log/install-pupit-service.log
